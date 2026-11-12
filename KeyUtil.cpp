@@ -66,6 +66,15 @@ bool generateStorageKey(const KeyGeneration& gen, KeyBuffer* key) {
 }
 
 static bool isFsKeyringSupportedImpl() {
+    // Keys added with FS_IOC_ADD_ENCRYPTION_KEY belong to the filesystem and
+    // are dropped when /data is unmounted, which recovery does several times
+    // after installing the DE keys. Devices with v1 policies can ask for the
+    // session keyring instead, whose keys survive remounts.
+    if (android::base::GetBoolProperty("ro.twrp.fscrypt.legacy_keyring", false)) {
+        LOG(INFO) << "Using the session keyring (ro.twrp.fscrypt.legacy_keyring)";
+        return false;
+    }
+
     android::base::unique_fd fd(open("/data", O_RDONLY | O_DIRECTORY | O_CLOEXEC));
 
     // FS_IOC_ADD_ENCRYPTION_KEY with a NULL argument will fail with ENOTTY if
